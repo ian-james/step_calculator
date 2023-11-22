@@ -138,7 +138,7 @@ def load_arguments():
         parser.add_argument("--skip_rows", default=3, help="Number of rows to skip in the TRC file")
 
         parser.add_argument("--distance_function", default="euclidean", help="Distance function to use")
-        parser.add_argument("--calc_metrics", nargs='+', default=["STEP_LENGTH_X","STEP_WIDTH_Z"], help="Calculate step metrics")
+        parser.add_argument("--calc_metrics", nargs='+', default=["STEP_LENGTH_X","STEP_HEIGHT_Y","STEP_WIDTH_Z"], help="Calculate step metrics")
 
         # Add arguments to allow only frames between a start and end frame to be processed in the analysis.
         parser.add_argument("--start_frame", default=0, help="Start frame to process")
