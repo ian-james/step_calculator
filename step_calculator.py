@@ -139,7 +139,13 @@ def load_arguments():
 
         parser.add_argument("--distance_function", default="euclidean", help="Distance function to use")
         parser.add_argument("--calc_metrics", nargs='+', default=["STEP_LENGTH_X","STEP_WIDTH_Z"], help="Calculate step metrics")
-        
+
+        # Add arguments to allow only frames between a start and end frame to be processed in the analysis.
+        parser.add_argument("--start_frame", default=0, help="Start frame to process")
+        parser.add_argument("--end_frame", default=-1, help="End frame to process")
+
+        # Add an argument to allow other columns to be included from the original data frame.
+        parser.add_argument("--include_columns", nargs='+', default=["Frame#","Time"], help="Include columns from the original data frame")
 
         # Parse the command-line arguments
         args = parser.parse_args()
@@ -167,6 +173,9 @@ def main():
     skip_rows = args.skip_rows
     distance_function = args.distance_function
     calc_metrics = args.calc_metrics
+    start_frame = int(args.start_frame)
+    end_frame = int(args.end_frame)
+    include_columns = args.include_columns
 
     print(f"Reading TRC file: {input_file}  with delimiter: {delimiter} and skipping rows: {skip_rows}")
     # Check if input file exists
@@ -178,7 +187,7 @@ def main():
     # Read the TRC file into a Pandas DataFrame
     df = read_trc_file(input_file,delimiter,header=None, skip_rows=skip_rows)
     if df is None:
-        print(f"Error reading TRC file: {full_trc_file_path}")
+        print(f"Error reading TRC file: {input_file}")
         return
     
     # Get the columns that are categories
@@ -192,7 +201,16 @@ def main():
         return    
     
     df = clean_data_frame(df)
-    key_columns_df = pd.DataFrame()
+
+    # Remove the rows that are outside the start and end frame    
+    if start_frame > 0:
+        df = df[df["Frame#"] >= start_frame]
+    if end_frame > 0:
+        df = df[df["Frame#"] <= end_frame]
+    df = df.reset_index(drop=True)
+
+
+    key_columns_df = df[include_columns]
     # Iterate over the left and right markers
     for left_marker, right_marker, metric in zip(left_markers, right_markers, calc_metrics):
         print("\nSelecting the left and right heel markers and calculating the step metrics.")
@@ -203,7 +221,7 @@ def main():
         print("Cleaning the missing data in the columns.")    
         # Fill missing values with the median of the closest two values
         left_cols.transform(fill_missing_with_median, axis=0)
-        right_cols.transform(fill_missing_with_median, axis=0)
+        right_cols.transform(fill_missing_with_median, axis=0)        
 
         hdf = pd.concat([left_cols, right_cols], axis=1)        
         
@@ -224,13 +242,13 @@ def main():
     print("\nWriting the data frame to a CSV file.")        
     # Write the key columns that were selected
     renamed_file_name =  rename_trc_to_csv(input_file,"_key_columns")
-    key_columns_df.to_csv(renamed_file_name, index=True)    
+    key_columns_df.to_csv(renamed_file_name, index=False)    
     print(f"Successfully wrote DataFrame to CSV file: {renamed_file_name}")
 
     # Save the summary to a CSV file
     summary = key_columns_df.describe()
     summary_file_name = rename_trc_to_csv(input_file,"_summary")
-    summary.to_csv(summary_file_name, index=True)
+    summary.to_csv(summary_file_name)
     print(f"Successfully wrote DataFrame to CSV file: {summary_file_name}")
 
     # Write the original dataframe with the new columns to a CSV file
